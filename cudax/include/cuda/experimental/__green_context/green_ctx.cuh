@@ -28,7 +28,7 @@
 
 #include <cuda/std/__cccl/prologue.h>
 
-#if _CCCL_CTK_AT_LEAST(12, 5)
+#if CUDART_VERSION >= 12090
 namespace cuda::experimental
 {
 
@@ -86,7 +86,7 @@ private:
 
 } // namespace cuda::experimental
 
-#endif // _CCCL_CTK_AT_LEAST(12, 5)
+#endif // CUDART_VERSION >= 12090
 
 #include <cuda/std/__cccl/epilogue.h>
 

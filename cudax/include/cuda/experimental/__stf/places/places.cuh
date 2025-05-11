@@ -49,9 +49,9 @@ class exec_place_grid;
 class exec_place_cuda_stream;
 
 // Green contexts are only supported since CUDA 12.4
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
 class exec_place_green_ctx;
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
 
 using get_executor_func_t = pos4 (*)(pos4, dim4, dim4);
 
@@ -144,9 +144,9 @@ public:
 
   static data_place composite(get_executor_func_t f, const exec_place_grid& grid);
 
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
   static data_place green_ctx(const green_ctx_view& gc_view);
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
 
   bool operator==(const data_place& rhs) const;
 
@@ -166,7 +166,7 @@ public:
   /// checks if this data place is a green context data place
   bool is_green_ctx() const
   {
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
     // If the devid indicates green_ctx_devid then we must have a descriptor
     _CCCL_ASSERT(devid != green_ctx_devid || gc_view != nullptr, "invalid state");
 
@@ -260,7 +260,7 @@ public:
   {
     if (p.is_green_ctx())
     {
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
       return p.gc_view->devid;
 #else // ^^^ _CCCL_CTK_AT_LEAST(12, 4) ^^^ / vvv _CCCL_CTK_BELOW(12, 4) vvv
       assert(0);
@@ -294,9 +294,9 @@ private:
   ::std::shared_ptr<composite_state> composite_desc;
 
 public:
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
   ::std::shared_ptr<green_ctx_view> gc_view;
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
   //} state
 
 private:
@@ -603,10 +603,10 @@ public:
   static exec_place device(int devid);
 
 // Green contexts are only supported since CUDA 12.4
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
   static exec_place green_ctx(const green_ctx_view& gc_view);
   static exec_place green_ctx(const ::std::shared_ptr<green_ctx_view>& gc_view_ptr);
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
 
   static exec_place_cuda_stream cuda_stream(cudaStream_t stream);
   static exec_place_cuda_stream cuda_stream(const decorated_stream& dstream);
@@ -1343,7 +1343,7 @@ inline data_place data_place::composite(get_executor_func_t f, const exec_place_
   return result;
 }
 
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
 inline data_place data_place::green_ctx(const green_ctx_view& gc_view)
 {
   data_place result;
@@ -1351,7 +1351,7 @@ inline data_place data_place::green_ctx(const green_ctx_view& gc_view)
   result.gc_view = ::std::make_shared<green_ctx_view>(gc_view);
   return result;
 }
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
 
 // User-visible API when the same partitioner as the one of the grid
 template <typename partitioner_t>
@@ -1382,13 +1382,13 @@ inline exec_place data_place::get_affine_exec_place() const
     return get_grid();
   }
 
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
   if (is_green_ctx())
   {
     EXPECT(gc_view != nullptr);
     return exec_place::green_ctx(gc_view);
   }
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
 
   // This must be a device
   return exec_place::device(devid);
@@ -1427,7 +1427,7 @@ inline bool data_place::operator==(const data_place& rhs) const
 
   if (is_green_ctx())
   {
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
     _CCCL_ASSERT(devid == green_ctx_devid, "");
     return (rhs.devid == green_ctx_devid && *gc_view == *rhs.gc_view);
 #else // ^^^ _CCCL_CTK_AT_LEAST(12, 4) ^^^ / vvv _CCCL_CTK_BELOW(12, 4) vvv
@@ -1684,7 +1684,7 @@ struct hash<data_place>
     // TODO fix gc_view visibility or provide a getter
     if (k.is_green_ctx())
     {
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
       return hash<green_ctx_view>()(*(k.gc_view));
 #else // ^^^ _CCCL_CTK_AT_LEAST(12, 4) ^^^ / vvv _CCCL_CTK_BELOW(12, 4) vvv
       assert(0);

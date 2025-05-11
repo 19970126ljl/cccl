@@ -14,7 +14,7 @@
 using namespace cuda::experimental::stf;
 
 // Green contexts are only supported since CUDA 12.4
-#if _CCCL_CTK_AT_LEAST(12, 4)
+#if CUDART_VERSION >= 12090
 __global__ void axpy(double a, slice<const double> x, slice<double> y)
 {
   int tid      = blockIdx.x * blockDim.x + threadIdx.x;
@@ -26,11 +26,11 @@ __global__ void axpy(double a, slice<const double> x, slice<double> y)
     y(ind) += a * x(ind);
   }
 }
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
 
 int main()
 {
-#if _CCCL_CTK_BELOW(12, 4)
+#if CUDART_VERSION >= 12090
   fprintf(stderr, "Green contexts are not supported by this version of CUDA: skipping test.\n");
   return 0;
 #else // ^^^ _CCCL_CTK_BELOW(12, 4) ^^^ / vvv _CCCL_CTK_AT_LEAST(12, 4) vvv

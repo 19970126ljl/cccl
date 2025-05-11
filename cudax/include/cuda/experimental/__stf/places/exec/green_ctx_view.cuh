@@ -28,8 +28,7 @@
 #include <cuda/experimental/__stf/internal/async_resources_handle.cuh>
 #include <cuda/experimental/__stf/utility/hash.cuh>
 
-#if _CCCL_CTK_AT_LEAST(12, 4)
-
+#if CUDART_VERSION >= 12090
 namespace cuda::experimental::stf
 {
 
@@ -67,4 +66,4 @@ struct hash<cuda::experimental::stf::green_ctx_view>
 
 } // end namespace cuda::experimental::stf
 
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090

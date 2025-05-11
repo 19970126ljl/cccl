@@ -29,8 +29,7 @@
 #include <cuda/experimental/__stf/places/exec/green_ctx_view.cuh>
 #include <cuda/experimental/__stf/places/places.cuh>
 
-#if _CCCL_CTK_AT_LEAST(12, 4)
-
+#if CUDART_VERSION >= 12090
 namespace cuda::experimental::stf
 {
 
@@ -275,4 +274,4 @@ inline exec_place exec_place::green_ctx(const ::std::shared_ptr<green_ctx_view>&
 
 } // end namespace cuda::experimental::stf
 
-#endif // _CCCL_CTK_AT_LEAST(12, 4)
+#endif // CUDART_VERSION >= 12090
