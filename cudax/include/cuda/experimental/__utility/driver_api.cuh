@@ -31,7 +31,7 @@ inline void* get_driver_entry_point(const char* name, [[maybe_unused]] int versi
 {
   void* fn;
   cudaDriverEntryPointQueryResult result;
-#if CUDART_VERSION >= 12050
+#if CUDART_VERSION >= 12090
   cudaGetDriverEntryPointByVersion(name, &fn, version, cudaEnableDefault, &result);
 #else
   // Versioned get entry point not available before 12.5, but we don't need anything versioned before that
@@ -143,7 +143,7 @@ inline CUcontext streamGetCtx(CUstream stream)
   return result;
 }
 
-#if CUDART_VERSION >= 12050
+#if CUDART_VERSION >= 12090
 struct __ctx_from_stream
 {
   enum class __kind
@@ -162,7 +162,7 @@ struct __ctx_from_stream
 
 inline __ctx_from_stream streamGetCtx_v2(CUstream stream)
 {
-  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuStreamGetCtx, cuStreamGetCtx_v2, 12050);
+  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuStreamGetCtx, cuStreamGetCtx_v2, 12090);
   CUcontext ctx         = nullptr;
   CUgreenCtx gctx       = nullptr;
   __ctx_from_stream __result;
@@ -206,26 +206,26 @@ inline cudaError_t eventDestroy(CUevent event)
   return static_cast<cudaError_t>(driver_fn(event));
 }
 
-#if CUDART_VERSION >= 12050
+#if CUDART_VERSION >= 12090
 // Add actual resource description input once exposure is ready
 inline CUgreenCtx greenCtxCreate(CUdevice dev)
 {
   CUgreenCtx result;
-  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuGreenCtxCreate, cuGreenCtxCreate, 12050);
+  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuGreenCtxCreate, cuGreenCtxCreate, 12090);
   call_driver_fn(driver_fn, "Failed to create a green context", &result, nullptr, dev, CU_GREEN_CTX_DEFAULT_STREAM);
   return result;
 }
 
 inline cudaError_t greenCtxDestroy(CUgreenCtx green_ctx)
 {
-  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuGreenCtxDestroy, cuGreenCtxDestroy, 12050);
+  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuGreenCtxDestroy, cuGreenCtxDestroy, 12090);
   return static_cast<cudaError_t>(driver_fn(green_ctx));
 }
 
 inline CUcontext ctxFromGreenCtx(CUgreenCtx green_ctx)
 {
   CUcontext result;
-  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuCtxFromGreenCtx, cuCtxFromGreenCtx, 12050);
+  static auto driver_fn = CUDAX_GET_DRIVER_FUNCTION_VERSIONED(cuCtxFromGreenCtx, cuCtxFromGreenCtx, 12090);
   call_driver_fn(driver_fn, "Failed to convert a green context", &result, green_ctx);
   return result;
 }

@@ -28,7 +28,7 @@
 #include <cuda/experimental/__stf/internal/async_resources_handle.cuh>
 #include <cuda/experimental/__stf/utility/hash.cuh>
 
-#if CUDA_VERSION >= 12040
+#if CUDA_VERSION >= 12090
 namespace cuda::experimental::stf
 {
 

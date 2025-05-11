@@ -14,7 +14,7 @@
 using namespace cuda::experimental::stf;
 
 // Green contexts are only supported since CUDA 12.4
-#if CUDA_VERSION >= 12040
+#if CUDA_VERSION >= 12090
 __global__ void axpy(double a, slice<const double> x, slice<double> y)
 {
   int tid      = blockIdx.x * blockDim.x + threadIdx.x;
@@ -54,7 +54,7 @@ void debug_info(cudaStream_t stream, CUgreenCtx g_ctx)
 
 int main()
 {
-#if CUDA_VERSION < 12040
+#if CUDA_VERSION < 12090
   fprintf(stderr, "Green contexts are not supported by this version of CUDA: skipping test.\n");
   return 0;
 #else

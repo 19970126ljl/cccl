@@ -137,8 +137,8 @@ struct stream_ref : ::cuda::stream_ref
   {
     CUcontext __stream_ctx;
     ::cuda::experimental::logical_device::kinds __ctx_kind = ::cuda::experimental::logical_device::kinds::device;
-#if CUDART_VERSION >= 12050
-    if (detail::driver::getVersion() >= 12050)
+#if CUDART_VERSION >= 12090
+    if (detail::driver::getVersion() >= 12090)
     {
       auto __ctx = detail::driver::streamGetCtx_v2(__stream);
       if (__ctx.__ctx_kind == detail::driver::__ctx_from_stream::__kind::__green)

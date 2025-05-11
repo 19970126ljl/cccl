@@ -28,7 +28,7 @@ void print_partition(async_resources_handle& handle, exec_place place, place_par
 
 int main()
 {
-#if CUDA_VERSION < 12040
+#if CUDA_VERSION < 12090
   fprintf(stderr, "Green contexts are not supported by this version of CUDA: skipping test.\n");
   return 0;
 #else

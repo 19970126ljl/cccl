@@ -27,7 +27,7 @@
 #include <cuda/experimental/__device/all_devices.cuh>
 #include <cuda/experimental/__utility/driver_api.cuh>
 
-#if CUDART_VERSION >= 12050
+#if CUDART_VERSION >= 12090
 namespace cuda::experimental
 {
 struct device_ref;
