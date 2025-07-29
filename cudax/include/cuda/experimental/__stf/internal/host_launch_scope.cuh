@@ -99,7 +99,8 @@ public:
 
     cudaEvent_t start_event, end_event;
     const bool record_time = t.schedule_task() || statistics.is_calibrating_to_file();
-
+    
+    nvtx_range nr(t.get_symbol().c_str());
     t.start();
 
     if constexpr (::std::is_same_v<Ctx, stream_ctx>)
