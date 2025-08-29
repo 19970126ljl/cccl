@@ -91,7 +91,7 @@ public:
     prop.location            = {.type = CU_MEM_LOCATION_TYPE_DEVICE, .id = dev};
 
     size_t alloc_granularity_bytes = cuda_try<cuMemGetAllocationGranularity>(&prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM);
-    //        fprintf(stderr, "GRANULARITY = %ld KB\n", alloc_granularity_bytes / 1024);
+          //  fprintf(stderr, "GRANULARITY = %ld KB\n", alloc_granularity_bytes / 1024);
 
     // To make our life simpler for now: we assume that we only allocate full blocks
     block_size_bytes = alloc_granularity_bytes;

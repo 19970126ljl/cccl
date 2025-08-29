@@ -28,7 +28,7 @@
 
 #include <cuda/std/__cccl/prologue.h>
 
-#if CUDART_VERSION >= 12090
+#if CUDART_VERSION >= 12099
 namespace cuda::experimental
 {
 

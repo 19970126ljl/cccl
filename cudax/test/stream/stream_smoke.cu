@@ -128,7 +128,7 @@ C2H_CCCLRT_TEST("Stream get device", "[stream]")
 
   INFO("Can create a side stream using logical device");
   {
-    if (test::cuda_driver_version() >= 12090)
+    if (test::cuda_driver_version() >= 12099)
     {
       auto ldev = dev0_stream.logical_device();
       CUDAX_REQUIRE(ldev.kind() == cudax::logical_device::kinds::device);

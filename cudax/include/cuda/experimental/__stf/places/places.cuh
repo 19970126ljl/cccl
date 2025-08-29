@@ -1489,6 +1489,7 @@ UNITTEST("grid exec place equality")
 };
 #endif // UNITTESTED_FILE
 
+#if CUDART_VERSION >= 12090
 template <auto... spec>
 template <typename Fun>
 interpreted_execution_policy<spec...>::interpreted_execution_policy(
