@@ -14,7 +14,7 @@
 #include <testing.cuh>
 #include <utility.cuh>
 
-#if CUDART_VERSION >= 12090
+#if CUDART_VERSION >= 12099
 C2H_TEST("Green context", "[green_context]")
 {
   if (test::cuda_driver_version() < 12050)

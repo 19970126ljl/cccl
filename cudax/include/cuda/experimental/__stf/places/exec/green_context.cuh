@@ -29,7 +29,7 @@
 #include <cuda/experimental/__stf/places/exec/green_ctx_view.cuh>
 #include <cuda/experimental/__stf/places/places.cuh>
 
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
 namespace cuda::experimental::stf
 {
 

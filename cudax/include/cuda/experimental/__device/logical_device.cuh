@@ -86,7 +86,7 @@ public:
       , __ctx(__dev.get_primary_context())
   {}
 
-#if CUDART_VERSION >= 12090
+#if CUDART_VERSION >= 12099
   //! @brief Construct logical_device from a green_context
   logical_device(const green_context& __gctx)
       : __dev_id(__gctx.__dev_id)

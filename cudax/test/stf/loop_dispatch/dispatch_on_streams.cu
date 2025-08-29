@@ -15,7 +15,7 @@ using namespace cuda::experimental::stf;
 
 int main()
 {
-#if CUDA_VERSION < 12090
+#if CUDA_VERSION < 12099
   fprintf(stderr, "Green contexts are not supported by this version of CUDA: skipping test.\n");
   return 0;
 #else

@@ -48,7 +48,7 @@ class exec_place_grid;
 class exec_place_cuda_stream;
 
 // Green contexts are only supported since CUDA 12.4
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
 class exec_place_green_ctx;
 #endif
 
@@ -143,7 +143,7 @@ public:
 
   static data_place composite(get_executor_func_t f, const exec_place_grid& grid);
 
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
   static data_place green_ctx(const green_ctx_view& gc_view);
 #endif
 
@@ -165,7 +165,7 @@ public:
   /// checks if this data place is a green context data place
   bool is_green_ctx() const
   {
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
     // If the devid indicates green_ctx_devid then we must have a descriptor
     _CCCL_ASSERT(devid != green_ctx_devid || gc_view != nullptr, "invalid state");
 
@@ -259,7 +259,7 @@ public:
   {
     if (p.is_green_ctx())
     {
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
       return p.gc_view->devid;
 #else
       assert(0);
@@ -293,7 +293,7 @@ private:
   ::std::shared_ptr<composite_state> composite_desc;
 
 public:
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
   ::std::shared_ptr<green_ctx_view> gc_view;
 #endif
   //} state
@@ -596,7 +596,7 @@ public:
   static exec_place device(int devid);
 
 // Green contexts are only supported since CUDA 12.4
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
   static exec_place green_ctx(const green_ctx_view& gc_view);
   static exec_place green_ctx(const ::std::shared_ptr<green_ctx_view>& gc_view_ptr);
 #endif
@@ -1336,7 +1336,7 @@ inline data_place data_place::composite(get_executor_func_t f, const exec_place_
   return result;
 }
 
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
 inline data_place data_place::green_ctx(const green_ctx_view& gc_view)
 {
   data_place result;
@@ -1375,7 +1375,7 @@ inline exec_place data_place::get_affine_exec_place() const
     return get_grid();
   }
 
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
   if (is_green_ctx())
   {
     EXPECT(gc_view != nullptr);
@@ -1420,7 +1420,7 @@ inline bool data_place::operator==(const data_place& rhs) const
 
   if (is_green_ctx())
   {
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
     _CCCL_ASSERT(devid == green_ctx_devid, "");
     return (rhs.devid == green_ctx_devid && *gc_view == *rhs.gc_view);
 #else
@@ -1530,6 +1530,9 @@ void compute_kernel_limits(
                 "Template parameter Fun must be a pointer to a function type.");
 
   ::std::tie(min_grid_size, max_block_size) = compute_occupancy(f, shared_mem_bytes);
+
+  // // print the min_grid_size and max_block_size
+  // printf("min_grid_size: %zu, max_block_size: %zu\n", min_grid_size, max_block_size);
 
   if (cooperative)
   {
@@ -1754,7 +1757,7 @@ struct hash<data_place>
     // TODO fix gc_view visibility or provide a getter
     if (k.is_green_ctx())
     {
-#if CUDA_VERSION >= 12090
+#if CUDA_VERSION >= 12099
       return hash<green_ctx_view>()(*(k.gc_view));
 #else
       assert(0);
