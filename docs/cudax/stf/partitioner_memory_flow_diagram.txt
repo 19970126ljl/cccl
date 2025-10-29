@@ -1,0 +1,227 @@
+================================================================================
+CUDAX STF PARTITIONER AND MEMORY MANAGEMENT FLOW DIAGRAM
+================================================================================
+
+1. USER LEVEL: Application Setup
+================================================================================
+
+    Application Code (e.g., fdtd_mgpu.cu)
+    ┌─────────────────────────────────────────────┐
+    │ exec_place where = exec_place::all_devices()│  // Create grid of 2 GPUs
+    │ auto data_shape = shape_of<...>(100,100,100)│  // Define 3D shape
+    │                                              │
+    │ ctx.parallel_for(                            │
+    │     blocked_partition(),  ← Partitioner      │
+    │     where,                ← Exec grid        │
+    │     data_shape,           ← Data shape       │
+    │     lEx.write(), ...      ← Dependencies     │
+    │ )                                            │
+    └─────────────────────────────────────────────┘
+                    ↓
+                    
+2. PARTITIONER LAYER: Logical Division
+================================================================================
+
+    blocked_partition::apply(shape, place_pos, grid_dims)
+    
+    Input:  shape = box([0,100), [0,100), [0,100))
+            grid_dims = dim4(2, 1, 1, 1)  // 2 devices
+    
+    For device 0 (place_pos = pos4(0,0,0,0)):
+    ┌────────────────────────────────────┐
+    │ Target dimension: 2 (Z-axis)       │
+    │ cnt = 100                          │
+    │ part_size = (100 + 2 - 1) / 2 = 50│
+    │                                    │
+    │ bounds[2].first  = 0               │
+    │ bounds[2].second = 50              │
+    └────────────────────────────────────┘
+    Returns: box([0,100), [0,100), [0,50))
+    
+    For device 1 (place_pos = pos4(1,0,0,0)):
+    ┌────────────────────────────────────┐
+    │ bounds[2].first  = 50              │
+    │ bounds[2].second = 100             │
+    └────────────────────────────────────┘
+    Returns: box([0,100), [0,100), [50,100))
+
+    LOGICAL PARTITION (in elements):
+    ┌─────────────────────────────────────────────┐
+    │  Device 0        │       Device 1           │
+    │  Elements        │       Elements           │
+    │  [0, 500,000)    │       [500,000, 1M)      │
+    ├──────────────────┼──────────────────────────┤
+    │  4,000,000 bytes │       4,000,000 bytes    │
+    └─────────────────────────────────────────────┘
+
+3. MEMORY MANAGER LAYER: Physical Allocation
+================================================================================
+
+    localized_array constructor
+    
+    Step 1: Query allocation granularity
+    ┌──────────────────────────────────────┐
+    │ cuMemGetAllocationGranularity()      │
+    │ → page_size = 2,097,152 bytes (2 MiB)│
+    └──────────────────────────────────────┘
+    
+    Step 2: Calculate VM reservation
+    ┌────────────────────────────────────────────────┐
+    │ total_size_bytes = 8,000,000 (7.63 MiB)       │
+    │ vm_total = ceil(8,000,000 / 2,097,152) * 2 MiB│
+    │          = 4 pages * 2 MiB                     │
+    │          = 8,388,608 bytes                     │
+    │ Padding = 388,608 bytes                        │
+    └────────────────────────────────────────────────┘
+    
+    Step 3: Page boundaries (linearized)
+    ┌─────────────┬─────────────┬─────────────┬─────────────┐
+    │   Page 0    │   Page 1    │   Page 2    │   Page 3    │
+    ├─────────────┼─────────────┼─────────────┼─────────────┤
+    │ Bytes:      │ Bytes:      │ Bytes:      │ Bytes:      │
+    │ [0, 2M)     │ [2M, 4M)    │ [4M, 6M)    │ [6M, 8M)    │
+    ├─────────────┼─────────────┼─────────────┼─────────────┤
+    │ Elements:   │ Elements:   │ Elements:   │ Elements:   │
+    │ [0, 262K)   │ [262K, 524K)│ [524K, 786K)│ [786K, 1M)  │
+    └─────────────┴─────────────┴─────────────┴─────────────┘
+    
+    Step 4: Determine ownership via sampling (block_to_grid_pos)
+    
+    For each page, sample 10 random elements:
+    
+    Page 0:  [0, 262,144)  
+        Samples: all < 500,000 → Device 0 ✓
+        Owner: Device 0 (100% samples)
+        
+    Page 1:  [262,144, 524,288)  ← BOUNDARY PAGE!
+        Samples: some < 500,000, some >= 500,000
+        Random outcome determines owner
+        Scenario A: 6 samples < 500K → Device 0 (60%)
+        Scenario B: 7 samples >= 500K → Device 1 (70%)
+        
+    Page 2:  [524,288, 786,432)
+        Samples: all >= 500,000 → Device 1 ✓
+        Owner: Device 1 (100% samples)
+        
+    Page 3:  [786,432, 1,048,576)
+        Samples: all >= 500,000 → Device 1 ✓
+        Owner: Device 1 (100% samples)
+
+4. PHYSICAL ALLOCATION OUTCOMES
+================================================================================
+
+    SCENARIO A: Page 1 assigned to Device 0
+    ┌────────────────────────────────────────┐
+    │ GPU 0: Pages [0, 1] = 4 MiB            │
+    │ GPU 1: Pages [2, 3] = 4 MiB            │
+    │                                        │
+    │ Balance: GOOD                          │
+    │ Issue: Page 1 contains elements        │
+    │        belonging to Device 1           │
+    │        (remote access penalty)         │
+    └────────────────────────────────────────┘
+    
+    SCENARIO B: Page 1 assigned to Device 1
+    ┌────────────────────────────────────────┐
+    │ GPU 0: Page [0] = 2 MiB               │
+    │ GPU 1: Pages [1, 2, 3] = 6 MiB        │
+    │                                        │
+    │ Balance: BAD (3:1 ratio)               │
+    │ Issue: GPU 0 severely undersized       │
+    │        GPU 1 oversized                 │
+    └────────────────────────────────────────┘
+
+5. EXECUTION LAYER: Kernel Launch
+================================================================================
+
+    parallel_for_scope iterates over grid places:
+    
+    Device 0 kernel:
+    ┌───────────────────────────────────────────┐
+    │ Sub-shape: box([0,100), [0,100), [0,50))  │
+    │ Accesses: elements [0, 500,000)           │
+    │                                           │
+    │ Memory location:                          │
+    │   - Elements [0, 262K): Local (Page 0) ✓ │
+    │   - Elements [262K, 500K): ???            │
+    │     * If Page 1 on GPU 0: Local ✓         │
+    │     * If Page 1 on GPU 1: Remote ✗        │
+    └───────────────────────────────────────────┘
+    
+    Device 1 kernel:
+    ┌───────────────────────────────────────────┐
+    │ Sub-shape: box([0,100), [0,100), [50,100))│
+    │ Accesses: elements [500,000, 1,000,000)   │
+    │                                           │
+    │ Memory location:                          │
+    │   - Elements [500K, 524K): ???            │
+    │     * If Page 1 on GPU 0: Remote ✗        │
+    │     * If Page 1 on GPU 1: Local ✓         │
+    │   - Elements [524K, 1M): Local (P2,P3) ✓  │
+    └───────────────────────────────────────────┘
+
+6. PROBLEM SUMMARY
+================================================================================
+
+┌────────────────────────────────────────────────────────────────────┐
+│ ROOT CAUSE: Misalignment between logical and physical partitioning │
+├────────────────────────────────────────────────────────────────────┤
+│ Logical Partition:  Element-based, partition boundary at 500,000   │
+│ Physical Allocation: Page-based (2 MiB pages)                      │
+│ Page Boundaries:     Every 262,144 elements                         │
+│                                                                     │
+│ GCD(500,000, 262,144) = 8  ← Not page-aligned!                     │
+│                                                                     │
+│ Result: Pages 1 straddles partition boundary                        │
+│         → Non-deterministic assignment                              │
+│         → Potential memory imbalance                                │
+│         → Remote memory access                                      │
+└────────────────────────────────────────────────────────────────────┘
+
+7. SOLUTION APPROACH: Padded Blocked Partition
+================================================================================
+
+    Goal: Align logical partition boundaries with page boundaries
+    
+    New algorithm:
+    ┌─────────────────────────────────────────────────────┐
+    │ page_size_elements = page_size / elem_size          │
+    │                    = 2,097,152 / 8 = 262,144        │
+    │                                                     │
+    │ ideal_part_size = cnt / nplaces = 100 / 2 = 50     │
+    │                                                     │
+    │ padded_part_size = ceil(ideal / page_size_elements)│
+    │                    * page_size_elements             │
+    │                  = ceil(500,000 / 262,144)          │
+    │                    * 262,144                        │
+    │                  = 2 * 262,144 = 524,288            │
+    └─────────────────────────────────────────────────────┘
+    
+    IMPROVED LOGICAL PARTITION (page-aligned):
+    ┌──────────────────────────────────────────────────────┐
+    │  Device 0          │       Device 1                  │
+    │  Elements          │       Elements                  │
+    │  [0, 524,288)      │       [524,288, 1,000,000)      │
+    ├────────────────────┼─────────────────────────────────┤
+    │  4,194,304 bytes   │       3,805,696 bytes           │
+    │  2 pages           │       2 pages (partial)         │
+    └──────────────────────────────────────────────────────┘
+    
+    PHYSICAL ALLOCATION (deterministic):
+    ┌────────────┬────────────┬────────────┬────────────┐
+    │  Page 0    │  Page 1    │  Page 2    │  Page 3    │
+    ├────────────┼────────────┼────────────┼────────────┤
+    │  GPU 0     │  GPU 0     │  GPU 1     │  GPU 1     │
+    └────────────┴────────────┴────────────┴────────────┘
+    
+    Benefits:
+    ✓ Deterministic page assignment (no random sampling needed)
+    ✓ No pages span partition boundaries
+    ✓ Perfect memory locality
+    ✓ Slight imbalance (2 vs 1.9 pages) but deterministic
+    
+    Trade-offs:
+    ✗ Device 0 gets slightly more elements (524K vs 476K)
+    ✗ Computational imbalance (but minimal: 10% vs 50-100% memory variance)
+
+================================================================================
